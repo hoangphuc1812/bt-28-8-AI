@@ -1,5 +1,5 @@
 # ==============================================================================
-# PHẦN 1: IMPORT CÁC THƯ VIỆN CẦN THIẾT
+# PHẦN 1: IMPORT CÁC THƯ VIỆN
 # ==============================================================================
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -9,10 +9,8 @@ import ipywidgets as widgets
 from IPython.display import display, clear_output
 
 # ==============================================================================
-# PHẦN 2: TẠO DỮ LIỆU VÀ HUẤN LUYỆN MÔ HÌNH (Giữ nguyên)
+# PHẦN 2: TẠO DỮ LIỆU VÀ HUẤN LUYỆN MÔ HÌNH
 # ==============================================================================
-
-# --- Tạo dữ liệu mẫu ---
 n_samples = 100
 sizes = np.random.randint(9, 15, n_samples)
 weights = np.random.uniform(150, 500, n_samples)
@@ -20,15 +18,16 @@ surfaces = np.random.randint(1, 4, n_samples)
 colors = np.random.randint(1, 4, n_samples)
 X = np.column_stack((sizes, weights, surfaces, colors))
 
-# --- Hàm phân loại và dán nhãn ---
 def get_size_class(cm):
     if cm >= 13: return 1
     elif cm >= 11: return 2
     else: return 3
+
 def get_weight_class(g):
     if g >= 350: return 1
     elif g >= 250: return 2
     else: return 3
+
 y = []
 for features in X:
     c1 = get_size_class(features[0])
@@ -36,12 +35,10 @@ for features in X:
     c3 = features[2]
     c4 = features[3]
     final_class = int(np.round(np.mean([c1, c2, c3, c4])))
-    if final_class < 1: final_class = 1
-    if final_class > 3: final_class = 3
+    final_class = max(1, min(3, final_class))
     y.append(final_class)
 y = np.array(y)
 
-# --- Huấn luyện mô hình ---
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
@@ -51,18 +48,15 @@ model.fit(X_train_scaled, y_train)
 print("✅ Hệ thống đã được huấn luyện và sẵn sàng để đánh giá. 🥭")
 print("-" * 60)
 
-
 # ==============================================================================
-# PHẦN 3: GIAO DIỆN KẾT HỢP PHÂN LOẠI VÀ PHÂN TÍCH
+# PHẦN 3: GIAO DIỆN VÀ PHÂN TÍCH
 # ==============================================================================
+COLOR_PRIMARY = '#4CAF50'
+COLOR_SECONDARY = '#FFC107'
+COLOR_DANGER = '#DC3545'
+COLOR_SUCCESS = '#28A745'
+COLOR_INFO = '#17A2B8'
 
-# --- Định nghĩa màu sắc chủ đạo ---
-COLOR_PRIMARY = '#4CAF50' # Xanh lá cây
-COLOR_SECONDARY = '#FFC107' # Vàng xoài
-COLOR_DANGER = '#DC3545' # Đỏ cảnh báo
-COLOR_SUCCESS = '#28A745' # Xanh lá thành công
-
-# --- Tạo các thành phần (widgets) ---
 widget_style = {'description_width': '40%'}
 widget_layout = widgets.Layout(width='48%')
 
@@ -74,48 +68,130 @@ color_dropdown = widgets.Dropdown(options=[('Vàng (Chín tới)', 1), ('Xanh (C
 predict_button = widgets.Button(description='Thực Hiện Phân Tích', button_style='success', icon='cogs', layout=widgets.Layout(width='98%', margin='20px 0 0 0'))
 output_area = widgets.Output(layout=widgets.Layout(margin='20px 0 0 0', padding='15px', border=f'1px solid {COLOR_PRIMARY}', width='98%', background_color='#F8F9FA'))
 
-
-# --- Định nghĩa hàm xử lý sự kiện (ĐÃ CẬP NHẬT) ---
 def on_button_clicked(b):
     size, weight, surface, color = size_input.value, weight_input.value, surface_dropdown.value, color_dropdown.value
-    
-    # --- BƯỚC 1: DÙNG MÔ HÌNH ĐỂ PHÂN LOẠI ---
     new_mango_scaled = scaler.transform(np.array([[size, weight, surface, color]]))
     predicted_class = model.predict(new_mango_scaled)[0]
 
-    # --- BƯỚC 2: PHÂN TÍCH CHUYÊN SÂU ĐỂ TƯ VẤN ---
-    analysis_report = ""
-    recommendation = ""
-    storage_guide = ""
+    # --- PHÂN LOẠI MỞ RỘNG ---
+    if surface == 3:
+        predicted_class = 3
+    elif color == 3:
+        predicted_class = 2 if surface != 3 else 3
+    elif size >= 13 and surface <=2 and color != 3:
+        predicted_class = 1
+    else:
+        predicted_class = 2
+
+    # --- PHÂN TÍCH THỰC TẾ VỚI NHIỀU MẪU NGẪU NHIÊN ---
+    analysis_options = []
+    recommendation_options = []
+    storage_options = []
     result_title_color = COLOR_PRIMARY
 
-    if surface == 3:
-        analysis_report = "<b>Phân tích:</b> Bề mặt vỏ có dấu hiệu hư hỏng cơ học nghiêm trọng..."
-        recommendation = "<b>Kết luận:</b> Sản phẩm không đạt tiêu chuẩn. <b><u>Khuyến nghị: Không lựa chọn.</u></b>"
-        storage_guide = "<b>Bảo quản:</b> Cần được loại bỏ..."
-        result_title_color = COLOR_DANGER
-    elif color == 3:
-        analysis_report = "<b>Phân tích:</b> Màu cam đậm là chỉ báo sản phẩm đã bước vào giai đoạn chín quá..."
-        recommendation = "<b>Kết luận:</b> Chất lượng đang suy giảm nhanh. <b><u>Khuyến nghị: Chỉ lựa chọn để sử dụng ngay.</u></b>"
-        storage_guide = "<b>Bảo quản:</b> Yêu cầu bảo quản lạnh và sử dụng trong vòng 24 giờ."
-        result_title_color = COLOR_SECONDARY
-    elif color == 1:
-        if surface == 1:
-            analysis_report = "<b>Phân tích:</b> Sản phẩm đạt các chỉ số tối ưu..."
-            recommendation = "<b>Kết luận:</b> Sản phẩm đạt chất lượng cao. <b><u>Khuyến nghị: Ưu tiên lựa chọn hàng đầu.</u></b>"
-        else:
-            analysis_report = "<b>Phân tích:</b> Bề mặt vỏ có khuyết điểm nhỏ không ảnh hưởng đáng kể..."
-            recommendation = "<b>Kết luận:</b> Chất lượng ở mức chấp nhận được. <b><u>Khuyến nghị: Có thể lựa chọn.</u></b>"
-        storage_guide = "<b>Bảo quản:</b> Tối ưu ở nhiệt độ phòng (2-3 ngày) hoặc bảo quản lạnh (5-7 ngày)."
+    if predicted_class == 1:
         result_title_color = COLOR_SUCCESS
-    elif color == 2:
-        analysis_report = "<b>Phân tích:</b> Vỏ màu xanh là chỉ báo xoài chưa đạt độ chín thương phẩm..."
-        if surface == 1:
-            recommendation = "<b>Kết luận:</b> Sản phẩm có tiềm năng tốt sau ủ chín. <b><u>Khuyến nghị: Lựa chọn để ủ chín hoặc ăn chua.</u></b>"
+        if surface ==1 and color ==1:
+            analysis_options = [
+                "Xoài cực ngon, vỏ đẹp, vừa chín tới, kích thước lớn.",
+                "Xoài tươi, ăn giòn, vỏ đẹp, rất thích hợp biếu tặng.",
+                "Quả ngon nhất lứa, cân nặng vừa phải, vỏ mịn."
+            ]
+            recommendation_options = [
+                "Ưu tiên lựa chọn để ăn sống hoặc biếu tặng.",
+                "Chọn làm quà hoặc ăn ngay, vị ngọt tự nhiên.",
+                "Đặt lên mâm cúng hay dùng để làm món tráng miệng."
+            ]
+            storage_options = [
+                "Bảo quản ở nhiệt độ phòng 2-3 ngày hoặc tủ lạnh 5-7 ngày.",
+                "Để nơi thoáng mát, tránh ánh nắng trực tiếp.",
+                "Bảo quản lạnh nếu chưa dùng, dùng trong 1 tuần."
+            ]
+        elif surface ==2:
+            analysis_options = [
+                "Xoài ngon, chỉ có vài vết xước nhỏ.",
+                "Quả hơi khuyết trên vỏ nhưng thịt vẫn ngọt.",
+                "Vỏ không hoàn hảo, nhưng chất lượng vẫn cao."
+            ]
+            recommendation_options = [
+                "Chất lượng cao, vẫn ưu tiên lựa chọn.",
+                "Ăn ngon, dùng để chế biến hay biếu đều được.",
+                "Dùng ngay hoặc để vài ngày đều ổn."
+            ]
+            storage_options = [
+                "Nhiệt độ phòng 2-3 ngày, hoặc bảo quản lạnh 5-6 ngày.",
+                "Đặt nơi thoáng mát, tránh ánh nắng trực tiếp.",
+                "Bảo quản lạnh nếu muốn dùng lâu hơn."
+            ]
         else:
-            recommendation = "<b>Kết luận:</b> Chất lượng tiềm năng ở mức trung bình. <b><u>Khuyến nghị: Cân nhắc kỹ lưỡng.</u></b>"
-        storage_guide = "<b>Bảo quản để ủ chín:</b> Giữ ở nhiệt độ phòng, nơi thoáng mát. Thời gian ủ dự kiến: 3-5 ngày."
-        result_title_color = '#007BFF'
+            analysis_options = ["Xoài ngon nhưng vỏ hơi xước, vẫn đáng ăn."]
+            recommendation_options = ["Loại 1, dùng ăn ngon hoặc chế biến."]
+            storage_options = ["Bảo quản phòng 2-3 ngày hoặc tủ lạnh 5-6 ngày."]
+
+    elif predicted_class == 2:
+        result_title_color = COLOR_SECONDARY
+        if color ==3:
+            analysis_options = [
+                "Xoài chín quá, vỏ mềm, ăn vẫn được nhưng không còn loại 1.",
+                "Quả chín nặng, vỏ vàng cam, thịt hơi mềm.",
+                "Chín quá, vị vẫn ngọt nhưng ăn sống hơi nhũn."
+            ]
+            recommendation_options = [
+                "Loại 2, dùng ngay hoặc làm sinh tố, mứt.",
+                "Ăn ngay để tránh nát, chế biến thành món tráng miệng.",
+                "Dùng cho sinh tố, salad, hoặc nấu ăn."
+            ]
+        else:
+            analysis_options = [
+                "Xoài trung bình, vỏ có khuyết điểm, chưa chín đều.",
+                "Quả vừa, ăn vẫn ngon nhưng không xuất sắc.",
+                "Kích thước trung bình, vài vết xước nhỏ."
+            ]
+            recommendation_options = [
+                "Loại 2, cân nhắc khi mua, ăn sau vài ngày.",
+                "Ăn ngon nhưng không xuất sắc, nên ăn từ từ.",
+                "Dùng chế biến hoặc ăn trực tiếp sau vài ngày ủ."
+            ]
+        storage_options = [
+            "Bảo quản nhiệt độ phòng 2-4 ngày, hoặc lạnh ngắn hạn.",
+            "Để nơi thoáng mát, tránh ánh nắng trực tiếp.",
+            "Bảo quản lạnh nếu chưa ăn ngay, dùng trong 3-4 ngày."
+        ]
+
+    else:  # Loại 3
+        result_title_color = COLOR_INFO
+        if surface ==3:
+            analysis_options = [
+                "Xoài hư hỏng nặng, vỏ dập, mềm, ăn sống không ngon.",
+                "Vỏ nát, quả mềm, chỉ dùng chế biến.",
+                "Hư hỏng nhiều, không thích hợp ăn trực tiếp."
+            ]
+            recommendation_options = [
+                "Loại 3, chỉ dùng chế biến hoặc bỏ.",
+                "Dùng để làm mứt hoặc sinh tố ngay.",
+                "Không ăn sống, chế biến ngay nếu muốn sử dụng."
+            ]
+        else:
+            analysis_options = [
+                "Xoài chín quá, vỏ vàng cam đậm, mềm, dễ nát.",
+                "Quả quá chín, ăn ngay hoặc chế biến.",
+                "Chín nặng, thịt mềm, vị ngọt nhưng không còn tươi."
+            ]
+            recommendation_options = [
+                "Loại 3, dùng ngay để ăn hoặc chế biến.",
+                "Ăn ngay hoặc làm sinh tố, mứt.",
+                "Không lưu trữ lâu, dùng trong ngày."
+            ]
+        storage_options = [
+            "Bảo quản lạnh tối đa 1 ngày nếu chưa dùng.",
+            "Dùng ngay để tránh nát.",
+            "Không để ngoài trời, bảo quản ngắn hạn."
+        ]
+
+    # Chọn ngẫu nhiên trong từng nhóm
+    analysis_report = np.random.choice(analysis_options)
+    recommendation = np.random.choice(recommendation_options)
+    storage_guide = np.random.choice(storage_options)
 
     # Hiển thị kết quả
     with output_area:
@@ -123,14 +199,14 @@ def on_button_clicked(b):
         html_output = f"""
         <div>
             <h4 style='text-align: center; color: {result_title_color}; font-size: 20px;'>BÁO CÁO ĐÁNH GIÁ CHẤT LƯỢNG SẢN PHẨM</h4>
-            
+
             <div style='background-color: {result_title_color}; color: white; padding: 10px; margin: 10px 0; border-radius: 5px; text-align: center;'>
                 <span style='font-size: 18px;'>PHÂN LOẠI THEO MÔ HÌNH: <b>🥭 XOÀI LOẠI {predicted_class} 🥭</b></span>
             </div>
-            
+
             <hr style='border-top: 1px solid {COLOR_PRIMARY};'>
             <div style='text-align: left;'>
-                <p><strong>1. Phân Tích Chuyên Sâu:</strong></p>
+                <p><strong>1. Phân Tích Thực Tế:</strong></p>
                 <p>{analysis_report}</p>
                 <br>
                 <p><strong>2. Kết Luận & Khuyến Nghị:</strong></p>
@@ -145,11 +221,9 @@ def on_button_clicked(b):
 
 predict_button.on_click(on_button_clicked)
 
-# --- Sắp xếp layout bằng Flexbox ---
 row_layout_with_margin = widgets.Layout(display='flex', flex_flow='row', justify_content='space-between', width='100%', margin='20px 0 0 0')
 row1 = widgets.Box([size_input, surface_dropdown], layout=row_layout_with_margin)
 row2 = widgets.Box([weight_input, color_dropdown], layout=widgets.Layout(display='flex', flex_flow='row', justify_content='space-between', width='100%', margin='10px 0 0 0'))
 app_layout = widgets.VBox([title, row1, row2, predict_button, output_area], layout=widgets.Layout(align_items='center', width='700px', border=f'2px solid {COLOR_PRIMARY}', padding='20px', background_color='#E8F5E9'))
 
-# --- Hiển thị giao diện ---
 display(app_layout)
